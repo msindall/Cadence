@@ -1,0 +1,18 @@
+import ContractTemplate from 0x01
+
+transaction (name: String, number: Int) {
+
+  prepare(acct: AuthAccount) {
+    log(acct.address)
+  }
+
+  execute {
+    ///Arrays
+    ContractTemplate.addName(name: name)
+    log(ContractTemplate.getNameArray())
+
+    ///Dictionaries
+    ContractTemplate.addNameNumber(name: name, number: number)
+    log(ContractTemplate.getNameNumberDict())
+  }
+}
