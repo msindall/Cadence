@@ -1,0 +1,112 @@
+// ContractTemplate.cdc
+
+access(all) contract ContractTemplate {
+
+    // constants
+    pub let nameConstant: String
+
+    //Arrays
+    pub var nameArray: [String]
+    pub var beerArray: [Beer]
+    pub var location: Int
+
+    ///Dictionaries
+    pub var nameNumberDictionary: {String : Int}
+
+    ///Structs
+    pub struct Beer {
+        pub var beername: String
+        pub var style: String
+        pub var abv: UFix64
+        pub var ibu: UFix64
+
+        init(_beername: String, _style: String, _abv: UFix64, _ibu: UFix64){
+            self.beername = _beername
+            self.style = _style
+            self.abv = _abv
+            self.ibu = _ibu
+        }
+    }
+
+    pub var spikesCornersIPA: Beer
+
+    // The init() function is required if the contract contains any fields.
+    init() {
+        self.nameConstant = "My name is Slim Shady Constant"
+        self.nameArray = ["Init", "Init2"]
+        self.beerArray = []
+        self.nameNumberDictionary = {"One": 1}
+        self.location = 0
+        self.spikesCornersIPA = Beer(_beername: "Spikes Corners IPA", _style: "IPA", _abv: 6.2, _ibu: 55.0)
+    }
+
+    // Public function that returns our constant name!
+    pub fun getNameConstant(): String {
+        return self.nameConstant
+    }
+
+    ///
+    /// ARRAYS
+    ///
+    pub fun addName(name: String) {
+        self.nameArray.append(name)
+    }
+    pub fun AddNameAt(name: String, location: Int){
+        self.nameArray.insert(at: location, name)
+    }
+    pub fun getNameArray(): [String] {
+        return self.nameArray
+    }
+    pub fun getNameArrayLength(): Int{
+        return self.nameArray.length
+    }
+    pub fun removeName(name: String){
+       /// self.nameArray.remove()
+       self.location = self.findName(name: name)
+       if self.location != -1{
+            self.nameArray.remove(at: self.location)
+       }
+    }
+    pub fun findName(name: String): Int{
+        self.location = 0
+        for x in self.nameArray {
+            if x == name{
+                return self.location
+            }
+            self.location = self.location + 1
+        }
+        return -1
+    }
+
+    ///
+    /// Dictionaries
+    /// self.nameNumberDictionary.Keys  -> returns an array of keys
+    /// self.nameNumberDictionary.Values -> returns array of values
+    ///
+    pub fun addNameNumber(name: String, number: Int) {
+
+       /// pre {
+       ///     self.nameNumberDictionary.containsKey(name): "This Name Does Not Exist"
+       ///  }
+        self.nameNumberDictionary[name] = number
+    }
+    pub fun removeNameNumber(name: String){
+        self.nameNumberDictionary.remove(key: name)
+    }
+    pub fun getNameNumberDict(): {String : Int} {
+        return self.nameNumberDictionary
+    }
+    pub fun getNameNumberDictLength(): Int{
+        return self.nameNumberDictionary.length
+    }
+
+
+    ///Structs
+    pub fun addBeer(_beerName: String, _beerStyle: String, _abv: UFix64, _ibu: UFix64)
+    {   
+        self.beerArray.append(Beer(_beername: _beerName, _style: _beerStyle, _abv: _abv, _ibu: _ibu))
+    }
+    pub fun getBeerArray(): [Beer]{
+        return self.beerArray
+    }
+}
