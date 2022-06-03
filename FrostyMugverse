@@ -1,0 +1,183 @@
+import NonFungibleToken from 0x02
+
+// FrostyMugverse
+//
+// Background
+// Border
+// MugStyle
+// Foam
+// Beer
+// BeerRecipe
+// 
+
+access(all) contract FrostyMugverse : NonFungibleToken {
+    //Constants
+    pub let maxSupply : UInt64
+
+    //Public
+    pub var totalSupply: UInt64
+    pub var totalSupplyBeers: UInt64
+    pub var totalSupplyBackgrounds: UInt64
+    pub var totalSupplyBorder: UInt64
+    pub var totalSupplyFoam: UInt64
+    pub var totalSupplyBeerRecipes: UInt64
+
+    pub event ContractInitialized()
+    pub event Withdraw(id: UInt64, from: Address?)
+    pub event Deposit(id: UInt64, to: Address?)
+
+    //Private
+
+
+    //Resources
+    pub resource NFT : NonFungibleToken.INFT {
+        pub let id: UInt64
+
+        // place where the Beers are stored
+        pub let beerItems: @{String: Beer}
+        pub let backgroundItems: @{String: Background}
+        
+        init(){
+            self.beerItems <- {}
+            self.backgroundItems <- {}
+            self.id = FrostyMugverse.totalSupply
+            FrostyMugverse.totalSupply = FrostyMugverse.totalSupply + 1
+        }
+
+        destroy() {
+            destroy self.beerItems
+            destroy self.backgroundItems
+        }
+    }
+
+    pub resource Beer : NonFungibleToken.INFT {
+        pub let id: UInt64
+        pub var beername: String
+        pub var style: String
+        pub var abv: UFix64
+        pub var ibu: UFix64
+
+        init(_beername: String, _style: String, _abv: UFix64, _ibu: UFix64){
+            self.id = FrostyMugverse.totalSupply
+            self.beername = _beername
+            self.style = _style
+            self.abv = _abv
+            self.ibu = _ibu
+            FrostyMugverse.totalSupplyBeers = FrostyMugverse.totalSupplyBeers + 1
+        }        
+    }
+
+    pub fun createBeer(_beername: String, _style: String, _abv: UFix64, _ibu: UFix64): @Beer {
+        log("Created a Beer")
+        return <-create Beer(_beername: _beername, _style: _style, _abv: _abv, _ibu: _ibu)
+    }
+
+    pub resource Background : NonFungibleToken.INFT {
+        pub let id: UInt64
+        pub var colour: String
+        pub var style: String
+
+        init(_colour: String, _style: String){
+            self.id = FrostyMugverse.totalSupply
+            self.colour = _colour
+            self.style = _style
+            FrostyMugverse.totalSupplyBackgrounds = FrostyMugverse.totalSupplyBackgrounds + 1
+        }        
+    }
+
+    pub fun createBackground(_colour: String, _style: String): @Background {
+        log("Created a Background")
+        return <-create Background(_colour: _colour, _style: _style)
+    }
+
+    pub resource Minter {
+        
+        pub fun CreateNFT(beername: String, style: String, abv: UFix64, ibu: UFix64): @NFT {
+            let mintNFT <- create NFT()
+            let mintBeer <- create Beer(_beername: beername, _style: style, _abv: abv, _ibu: ibu)
+            let mintBackground <- create Background(_colour: "Red", _style: "Drippy")
+
+            let oldBeer <- mintNFT.beerItems[beername] <- mintBeer
+            destroy oldBeer
+            log("Gave Beer to NFT")
+
+            let oldBackground <- mintNFT.backgroundItems["Red"] <- mintBackground
+            destroy oldBackground
+            log("Gave Background to NFT")
+
+            return <- mintNFT
+        }
+
+        init(){
+        }
+    }
+    pub resource Collection: NonFungibleToken.Provider, NonFungibleToken.Receiver, NonFungibleToken.CollectionPublic, ICollectionPublic {
+        pub var ownedNFTs: @{UInt64 : NonFungibleToken.NFT}
+
+        pub fun deposit(token: @NonFungibleToken.NFT){
+            //ensure it is an NFT of our type and not a Bored Ape
+            let depositToken <- token as! @NFT
+
+            //deposit nft into collection
+            emit Deposit(id: depositToken.id, to: self.owner?.address)
+            self.ownedNFTs[depositToken.id] <-! depositToken
+        }
+
+        pub fun withdraw(withdrawID: UInt64): @NonFungibleToken.NFT {
+            let token <- self.ownedNFTs.remove(key: withdrawID)
+                        ?? panic("Could Not Retreive NFT")
+
+            emit Withdraw(id: withdrawID, from: self.owner?.address)
+            return <- token
+        }
+
+        pub fun getIDs(): [UInt64] {
+            return self.ownedNFTs.keys
+        }
+
+        pub fun borrowNFT(id: UInt64): &NonFungibleToken.NFT {
+            return &self.ownedNFTs[id] as &NonFungibleToken.NFT
+        }
+
+        pub fun borrowDetailedNFT(id: UInt64): &NFT {
+            let refNFT = &self.ownedNFTs[id] as auth &NonFungibleToken.NFT
+
+            return refNFT as! &NFT
+        }
+
+        init(){
+            self.ownedNFTs <- {}
+        }
+
+        destroy(){
+            destroy self.ownedNFTs
+        }
+    }
+
+    pub resource interface ICollectionPublic{
+        pub fun getIDs() : [UInt64]
+        pub fun deposit(token: @NonFungibleToken.NFT)
+        pub fun borrowNFT(id: UInt64): &NonFungibleToken.NFT
+        pub fun borrowDetailedNFT(id: UInt64): &NFT
+    }
+
+    pub fun createEmptyCollection(): @Collection {
+            return <- create Collection()
+        }
+
+    
+
+    // The init() function is required if the contract contains any fields.
+    init() {
+        emit ContractInitialized()
+        self.maxSupply = 10
+        self.totalSupply = 0
+        self.totalSupplyBeers = 0
+        self.totalSupplyBackgrounds = 0
+        self.totalSupplyBorder = 0
+        self.totalSupplyFoam = 0
+        self.totalSupplyBeerRecipes = 0
+
+        self.account.save(<- create Minter(), to: /storage/Minter)
+    }
+}
