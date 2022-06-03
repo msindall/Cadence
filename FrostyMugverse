@@ -34,8 +34,8 @@ access(all) contract FrostyMugverse : NonFungibleToken {
         pub let id: UInt64
 
         // place where the Beers are stored
-        pub let beerItems: @{String: Beer}
-        pub let backgroundItems: @{String: Background}
+        pub var beerItems: @{String: Beer}
+        pub var backgroundItems: @{String: Background}
         
         init(){
             self.beerItems <- {}
@@ -58,7 +58,7 @@ access(all) contract FrostyMugverse : NonFungibleToken {
         pub var ibu: UFix64
 
         init(_beername: String, _style: String, _abv: UFix64, _ibu: UFix64){
-            self.id = FrostyMugverse.totalSupply
+            self.id = FrostyMugverse.totalSupplyBeers
             self.beername = _beername
             self.style = _style
             self.abv = _abv
@@ -78,7 +78,7 @@ access(all) contract FrostyMugverse : NonFungibleToken {
         pub var style: String
 
         init(_colour: String, _style: String){
-            self.id = FrostyMugverse.totalSupply
+            self.id = FrostyMugverse.totalSupplyBackgrounds
             self.colour = _colour
             self.style = _style
             FrostyMugverse.totalSupplyBackgrounds = FrostyMugverse.totalSupplyBackgrounds + 1
@@ -92,20 +92,22 @@ access(all) contract FrostyMugverse : NonFungibleToken {
 
     pub resource Minter {
         
-        pub fun CreateNFT(beername: String, style: String, abv: UFix64, ibu: UFix64): @NFT {
+        pub fun CreateNFT(): @NFT {
             let mintNFT <- create NFT()
-            let mintBeer <- create Beer(_beername: beername, _style: style, _abv: abv, _ibu: ibu)
-            let mintBackground <- create Background(_colour: "Red", _style: "Drippy")
-
-            let oldBeer <- mintNFT.beerItems[beername] <- mintBeer
-            destroy oldBeer
-            log("Gave Beer to NFT")
-
-            let oldBackground <- mintNFT.backgroundItems["Red"] <- mintBackground
-            destroy oldBackground
-            log("Gave Background to NFT")
-
+            log("Created Base Frosty Muggin'")
             return <- mintNFT
+        }
+
+        pub fun CreateBeer(beername: String, style: String, abv: UFix64, ibu: UFix64) : @Beer {
+            let mintBeer <- create Beer(_beername: beername, _style: style, _abv: abv, _ibu: ibu)
+            log("Minted a Beer'")
+            return <- mintBeer
+        }
+
+        pub fun CreateBackground(bgColour : String, bgStyle: String) : @Background {
+            let mintBackground <- create Background(_colour: bgColour, _style: bgStyle)
+            log("Minted a Background")
+            return <- mintBackground
         }
 
         init(){
@@ -141,7 +143,6 @@ access(all) contract FrostyMugverse : NonFungibleToken {
 
         pub fun borrowDetailedNFT(id: UInt64): &NFT {
             let refNFT = &self.ownedNFTs[id] as auth &NonFungibleToken.NFT
-
             return refNFT as! &NFT
         }
 
