@@ -1,0 +1,76 @@
+// Create Collections
+
+ import NFTTemplate from 0x01
+ import NonFungibleToken from 0x02
+
+transaction () {
+  //beerName: String, beerStyle: String, abv: UFix64, ibu: UFix64
+  
+  prepare(acct: AuthAccount) {
+    //add collection to user storage
+    acct.save(<- NFTTemplate.createEmptyCollection(), to: /storage/MyCollection) 
+
+    //create public link to collection from private account
+    acct.link<&NFTTemplate.Collection{NonFungibleToken.CollectionPublic, NFTTemplate.ICollectionPublic}>(/public/MyCollection, target: /storage/MyCollection)
+  }
+
+  execute {
+    log("Stored a Collection")
+  }
+}
+
+
+
+// Create / Store NFT's
+
+import NFTTemplate from 0x01
+import NonFungibleToken from 0x02
+
+transaction (recipient: Address, _beerName: String, _beerStyle: String, _abv: UFix64, _ibu: UFix64) {
+//beerName: String, beerStyle: String, abv: UFix64, ibu: UFix64
+
+  //The NFT Minter will sign this transaction
+  prepare(acct: AuthAccount) {
+
+    let nftMinter = acct.borrow<&NFTTemplate.Minter>(from: /storage/Minter) ?? panic("Could not get NFT Minter")
+
+    let publicRef = getAccount(recipient).getCapability(/public/MyCollection)
+                                      .borrow<&NFTTemplate.Collection{NFTTemplate.ICollectionPublic}>()
+                                      ?? panic("This account does not have a collection.")
+
+    publicRef.deposit(token: <- nftMinter.CreateNFT(beername: _beerName, style: _beerStyle, abv: _abv, ibu: _ibu))
+  }
+
+  execute {
+    log("Deposite newly minted NFT into Collection")
+  }
+}
+
+
+// Transfer NFT's
+import NFTTemplate from 0x01
+import NonFungibleToken from 0x02
+
+//where the NFT is going
+transaction (recipient: Address, id: UInt64) {
+//beerName: String, beerStyle: String, abv: UFix64, ibu: UFix64
+
+  //The account sending the NFT
+  prepare(acct: AuthAccount) {
+
+    //get sender collection
+    let collection = acct.borrow<&NFTTemplate.Collection>(from: /storage/MyCollection) ?? panic("Could Not Retreive Sender Collection")
+
+    //get receiver public collection info
+    let publicRef = getAccount(recipient).getCapability(/public/MyCollection)
+                                      .borrow<&NFTTemplate.Collection{NFTTemplate.ICollectionPublic}>()
+                                      ?? panic("The receiving account does not have a collection.")
+
+    //deposit NFT
+    publicRef.deposit(token: <- collection.withdraw(withdrawID: id))
+  }
+
+  execute {
+    log("Transferred NFT into Collection")
+  }
+}
