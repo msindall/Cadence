@@ -1,6 +1,6 @@
 // Create Collections
 
- import NFTTemplate from 0x01
+ import FrostyMugverse from 0x01
  import NonFungibleToken from 0x02
 
 transaction () {
@@ -8,10 +8,10 @@ transaction () {
   
   prepare(acct: AuthAccount) {
     //add collection to user storage
-    acct.save(<- NFTTemplate.createEmptyCollection(), to: /storage/MyCollection) 
+    acct.save(<- FrostyMugverse.createEmptyCollection(), to: /storage/MyCollection) 
 
     //create public link to collection from private account
-    acct.link<&NFTTemplate.Collection{NonFungibleToken.CollectionPublic, NFTTemplate.ICollectionPublic}>(/public/MyCollection, target: /storage/MyCollection)
+    acct.link<&FrostyMugverse.Collection{NonFungibleToken.CollectionPublic, FrostyMugverse.ICollectionPublic}>(/public/MyCollection, target: /storage/MyCollection)
   }
 
   execute {
@@ -21,9 +21,10 @@ transaction () {
 
 
 
+
 // Create / Store NFT's
 
-import NFTTemplate from 0x01
+import FrostyMugverse from 0x01
 import NonFungibleToken from 0x02
 
 transaction (recipient: Address, _beerName: String, _beerStyle: String, _abv: UFix64, _ibu: UFix64) {
@@ -32,19 +33,26 @@ transaction (recipient: Address, _beerName: String, _beerStyle: String, _abv: UF
   //The NFT Minter will sign this transaction
   prepare(acct: AuthAccount) {
 
-    let nftMinter = acct.borrow<&NFTTemplate.Minter>(from: /storage/Minter) ?? panic("Could not get NFT Minter")
+    let nftMinter = acct.borrow<&FrostyMugverse.Minter>(from: /storage/Minter) ?? panic("Could not get NFT Minter")
 
     let publicRef = getAccount(recipient).getCapability(/public/MyCollection)
-                                      .borrow<&NFTTemplate.Collection{NFTTemplate.ICollectionPublic}>()
+                                      .borrow<&FrostyMugverse.Collection{FrostyMugverse.ICollectionPublic}>()
                                       ?? panic("This account does not have a collection.")
 
-    publicRef.deposit(token: <- nftMinter.CreateNFT(beername: _beerName, style: _beerStyle, abv: _abv, ibu: _ibu))
+    let baseNFT <- nftMinter.CreateNFT()
+    let beerOne <- nftMinter.CreateBeer(beername: _beerName, style: _beerStyle, abv: _abv, ibu: _ibu)
+    let oldBeer <- baseNFT.beerItems[_beerName] <- beerOne
+    log("Gave a Beer to a Frosty Muggin'!")
+    destroy oldBeer
+    log(baseNFT.beerItems.keys)
+    publicRef.deposit(token: <- baseNFT)
   }
 
   execute {
     log("Deposite newly minted NFT into Collection")
   }
 }
+
 
 
 // Transfer NFT's
@@ -73,4 +81,21 @@ transaction (recipient: Address, id: UInt64) {
   execute {
     log("Transferred NFT into Collection")
   }
+}
+
+
+//Read NFT
+import FrostyMugverse from 0x01
+import NonFungibleToken from 0x02
+
+pub fun main(account: Address, id: UInt64): [UInt64] {
+  let publicRef = getAccount(account).getCapability(/public/MyCollection)
+                                      .borrow<&FrostyMugverse.Collection{FrostyMugverse.ICollectionPublic}>()
+                                      ?? panic("Could not borrow NFT")
+
+  let ref = publicRef.borrowDetailedNFT(id: id)
+  log(ref.id)
+  log(ref.backgroundItems.keys)
+  log(ref.beerItems.keys)
+  return publicRef.getIDs()
 }
